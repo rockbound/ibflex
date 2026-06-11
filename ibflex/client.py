@@ -99,15 +99,32 @@ class StatementError:
 ###############################################################################
 # FUNCTIONS
 ###############################################################################
-def download(token: str, query_id: str, max_tries: int | None = 5) -> bytes:
+def download(
+    token: str,
+    query_id: str,
+    max_tries: int | None = 5,
+    period: int | None = None,
+    fd: str | None = None,
+    td: str | None = None,
+) -> bytes:
     """2-step FlexQueryReport download process.
 
     Args:
         token: Current access token from Reports > Settings > FlexWeb Service.
         query_id: Flex Query ID from
                   Reports > Flex Queries > Custom Flex Queries > Configure.
+        max_tries: Number of times to poll for statement generation before
+                   raising StatementGenerationTimeout.
+        period: Optional lookback override, in days (max 365), sent as the
+                ``p`` SendRequest parameter.
+        fd, td: Optional explicit from/to date override (``yyyymmdd``, at most
+                365 days apart), sent as the ``fd``/``td`` SendRequest
+                parameters; must be given together. ``period`` and
+                ``fd``/``td`` are mutually exclusive.
     """
-    stmt_access = request_statement(token, query_id)
+    stmt_access = request_statement(
+        token, query_id, period=period, fd=fd, td=td
+    )
     status = 0
     tries = 0
     while status is not True:
@@ -127,12 +144,22 @@ def download(token: str, query_id: str, max_tries: int | None = 5) -> bytes:
 
 
 def request_statement(
-    token: str, query_id: str, url: str | None = None
+    token: str,
+    query_id: str,
+    url: str | None = None,
+    period: int | None = None,
+    fd: str | None = None,
+    td: str | None = None,
 ) -> StatementAccess:
     """First part of the 2-step download process.
+
+    ``period``/``fd``/``td`` are optional date-range overrides applied only
+    to this SendRequest, not to the GetStatement polls.
     """
     url = url or REQUEST_URL
-    response = submit_request(url, token, query=query_id)
+    response = submit_request(
+        url, token, query=query_id, period=period, fd=fd, td=td
+    )
     stmt_access = parse_stmt_response(response)
     if isinstance(stmt_access, StatementError):
         raise ResponseCodeError(
@@ -142,13 +169,38 @@ def request_statement(
     return stmt_access
 
 
-def submit_request(url: str, token: str, query: str) -> requests.Response:
+def submit_request(
+    url: str,
+    token: str,
+    query: str,
+    period: int | None = None,
+    fd: str | None = None,
+    td: str | None = None,
+) -> requests.Response:
     """Post a query to an API access point, along with an authentication token.
+
+    ``period`` (``p``), ``fd`` and ``td`` are optional date-range overrides
+    added to the query string after the required ``v``/``t``/``q`` params.
+    ``period`` and ``fd``/``td`` are mutually exclusive, and ``fd``/``td``
+    must be given together.
 
     Retry with a progressive timeout window.
     """
+    if period is not None and (fd is not None or td is not None):
+        raise ValueError("Pass either `period` or `fd`/`td`, not both")
+    if (fd is None) != (td is None):
+        raise ValueError("Pass both `fd` and `td`, or neither")
+
     MAX_REQUESTS = 3
     TIMEOUT_INCREMENT = 5
+
+    params = {"v": "3", "t": token, "q": query}
+    if period is not None:
+        params["p"] = str(period)
+    if fd is not None:
+        params["fd"] = fd
+    if td is not None:
+        params["td"] = td
 
     response = None
     req_count = 1
@@ -156,7 +208,7 @@ def submit_request(url: str, token: str, query: str) -> requests.Response:
         try:
             response = requests.get(
                 url,
-                params={"v": "3", "t": token, "q": query},
+                params=params,
                 headers={"user-agent": "Java"},
                 timeout=req_count * TIMEOUT_INCREMENT,
             )
@@ -243,9 +295,20 @@ def main():
                            help='Current Flex Web Service token')
     argparser.add_argument('--query', '-q', required=True,
                            help='Flex Query ID#')
+    argparser.add_argument('--period', '-p', type=int, default=None,
+                           help='Lookback override in days (max 365)')
+    argparser.add_argument('--fromdate', '--fd', dest='fd', default=None,
+                           help='From-date override (yyyymmdd)')
+    argparser.add_argument('--todate', '--td', dest='td', default=None,
+                           help='To-date override (yyyymmdd)')
     args = argparser.parse_args()
 
-    statement = download(args.token, args.query)
+    try:
+        statement = download(
+            args.token, args.query, period=args.period, fd=args.fd, td=args.td
+        )
+    except ValueError as exc:
+        argparser.error(str(exc))
     print(statement.decode())
 
 

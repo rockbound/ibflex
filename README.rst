@@ -116,6 +116,16 @@ them:
     In [5]: response[:215]
     Out[5]: b'<FlexQueryResponse queryName="Get Everything" type="AF">\n<FlexStatements count="1">\n<FlexStatement accountId="U111111" fromDate="2018-01-01" toDate="2018-01-31" period="LastMonth" whenGenerated="2018-02-01;211353">\n'
 
+You can override the report's date range per request with ``period`` (the
+``p`` parameter - a lookback in days, up to 365) or ``fd``/``td`` (explicit
+``yyyymmdd`` from/to dates, given together); the two forms are mutually
+exclusive. This is useful because the v3 Flex Web Service may not honor a
+query's saved "Last N Calendar Days" period:
+
+.. code:: python
+
+    In [6]: response = client.download(token, query_id, period=90)
+
 
 ``pip install ibflex[web]`` also installs a ``flexget`` console script:
 

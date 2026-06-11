@@ -150,5 +150,85 @@ class DownloadTestCase(unittest.TestCase):
         self.assertIsInstance(response, Types.FlexQueryResponse)
 
 
+@patch("requests.get", side_effect=mock_response)
+class DateRangeOverrideTestCase(unittest.TestCase):
+    def test_period_override_sent_on_send_request_only(self, mock_requests_get):
+        #  `period` is forwarded to SendRequest as `p`, but the GetStatement
+        #  poll must NOT carry it.
+        output = client.download(
+            token="DEADBEEF",
+            query_id="0987654321",
+            period=90,
+        )
+        self.assertIsInstance(output, bytes)
+
+        self.assertEqual(
+            mock_requests_get.call_args_list,
+            [
+                call(
+                    client.REQUEST_URL,
+                    params={
+                        "v": "3", "t": "DEADBEEF", "q": "0987654321", "p": "90",
+                    },
+                    headers={"user-agent": "Java"},
+                    timeout=5,
+                ),
+                call(
+                    client.STMT_URL,
+                    params={"v": "3", "t": "DEADBEEF", "q": "1234567890"},
+                    headers={"user-agent": "Java"},
+                    timeout=5,
+                ),
+            ],
+        )
+
+    def test_from_to_date_override(self, mock_requests_get):
+        client.request_statement(
+            token="DEADBEEF",
+            query_id="0987654321",
+            fd="20260101",
+            td="20260331",
+        )
+
+        mock_requests_get.assert_called_once_with(
+            client.REQUEST_URL,
+            params={
+                "v": "3", "t": "DEADBEEF", "q": "0987654321",
+                "fd": "20260101", "td": "20260331",
+            },
+            headers={"user-agent": "Java"},
+            timeout=5,
+        )
+
+    def test_period_and_dates_are_mutually_exclusive(self, mock_requests_get):
+        with self.assertRaises(ValueError):
+            client.download(
+                token="DEADBEEF",
+                query_id="0987654321",
+                period=90,
+                fd="20260101",
+                td="20260131",
+            )
+        mock_requests_get.assert_not_called()
+
+    def test_fd_and_td_must_be_given_together(self, mock_requests_get):
+        for kwargs in ({"fd": "20260101"}, {"td": "20260131"}):
+            with self.assertRaises(ValueError):
+                client.download(
+                    token="DEADBEEF", query_id="0987654321", **kwargs
+                )
+        mock_requests_get.assert_not_called()
+
+    def test_no_override_leaves_params_unchanged(self, mock_requests_get):
+        client.request_statement(token="DEADBEEF", query_id="0987654321")
+
+        mock_requests_get.assert_called_once_with(
+            client.REQUEST_URL,
+            params={"v": "3", "t": "DEADBEEF", "q": "0987654321"},
+            headers={"user-agent": "Java"},
+            timeout=5,
+        )
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=3)
