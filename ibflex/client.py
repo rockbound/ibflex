@@ -104,8 +104,7 @@ def download(token: str, query_id: str, max_tries: int | None = 5) -> bytes:
 
     Args:
         token: Current access token from Reports > Settings > FlexWeb Service.
-        query_id: Flex Query ID from
-                  Reports > Flex Queries > Custom Flex Queries > Configure.
+        query_id: Flex Query ID from Reports > Flex Queries > Custom Flex Queries > Configure.
     """
     stmt_access = request_statement(token, query_id)
     status = 0
@@ -202,9 +201,9 @@ def check_statement_response(response: requests.Response) -> bool | int:
     """Validate response received from 2nd step of download.
 
     Returns:
-        True if `response` contains a FlexQueryResponse.
-        Retry delay (seconds) if `response` is an error indicating that
-            'please try again shortly' means 'within several seconds'.
+        True if `response` contains a FlexQueryResponse, or a retry delay
+        (seconds) if `response` is an error indicating that 'please try
+        again shortly' means 'within several seconds'.
 
     Raises:
         ResponseCodeError if `response` is any other kind of error.

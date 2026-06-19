@@ -1,0 +1,48 @@
+/* Rockbound Capital brand styling for the finance-math docs.
+ *
+ * Colors are wired through Furo's CSS variables in conf.py (so they follow the
+ * light/dark toggle); this file adds the Libre Franklin typeface from the brand
+ * guide and the Warm Gold accent rules. The ``--rockbound-*`` variables are
+ * defined per theme in conf.py. No logo, per the docs brief. */
+
+/* Libre Franklin (body / UI) and EB Garamond (display face), both from Google
+ * Fonts -- served from Google's CDN, so no font files ship here. */
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@600;700&family=Libre+Franklin:wght@400;500;600;700&display=swap');
+
+/* EB Garamond -- brand display face. Per the brand guide it is used ONLY for the
+ * main header line (hero / page title), never for subheaders or body. */
+
+/* Deep Navy headings in light mode, navy-tint in dark (per --rockbound-heading). */
+h1,
+h2,
+h3,
+h4 {
+  color: var(--rockbound-heading);
+  font-weight: 600;
+}
+
+/* Warm Gold separator rules, matching the brand's section dividers. */
+article hr {
+  border: none;
+  border-top: 2px solid var(--rockbound-accent);
+}
+
+/* Page title (hero / main header line): EB Garamond + Warm Gold underline. */
+article h1 {
+  font-family: "EB Garamond", Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  border-bottom: 2px solid var(--rockbound-accent);
+  padding-bottom: 0.3rem;
+}
+
+/* Sidebar project title (the site's hero heading) in EB Garamond. */
+.sidebar-brand-text {
+  font-family: "EB Garamond", Georgia, "Times New Roman", serif;
+  color: var(--rockbound-heading);
+  font-weight: 700;
+}
+
+/* API signatures: a Warm Gold left rule against the Aqua Haze panel fill. */
+dl.py > dt {
+  border-left: 3px solid var(--rockbound-accent);
+}

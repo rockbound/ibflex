@@ -22,3 +22,6 @@ reg_settings.py
 
 # Local virtual environment
 .venv/
+
+# Sphinx build output (docs/ source is committed)
+docs/_build/

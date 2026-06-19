@@ -311,10 +311,10 @@ def make_converter(
 
     Args:
         Type: type constructor e.g. str, Decimal, datetime
-        prep: function that accepts string input and returns value(s) that can
-              can be passed to the type constructor to create a Type instance.
+        prep: function that accepts string input and returns value(s) that can be passed to the type constructor to create a Type instance.
 
-    Returns: a function that accepts string input and returns a Type instance.
+    Returns:
+        a function that accepts string input and returns a Type instance.
     """
     def convert(value: str) -> DataType:
         try:
