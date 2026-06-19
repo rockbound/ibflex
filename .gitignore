@@ -19,3 +19,6 @@ reg_settings.py
 /venv/
 **/.DS_Store
 .vscode/
+
+# Local virtual environment
+.venv/
