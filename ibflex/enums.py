@@ -156,6 +156,8 @@ class BuySell(str, enum.Enum):
     CANCELBUY = "BUY (Ca.)"
     SELL = "SELL"
     CANCELSELL = "SELL (Ca.)"
+    EXCHANGEBUY = "EXCHANGE BUY"  # Mutual fund exchange, fund received (transactionType="ExchTrade")
+    EXCHANGESELL = "EXCHANGE SELL"  # Mutual fund exchange, fund given up (transactionType="ExchTrade")
 
 
 @enum.unique

@@ -1228,6 +1228,33 @@ class CorporateActionTestCase(unittest.TestCase):
         self.assertEqual(instance.type, enums.Reorg.MERGER)
 
 
+class TradeConfirmMutualFundExchangeTestCase(unittest.TestCase):
+    #  A mutual fund exchange is delivered as a pair of FUNDSERV executions
+    #  with transactionType="ExchTrade" and buySell "EXCHANGE BUY" /
+    #  "EXCHANGE SELL"; the quantity carries the sign.
+    def parse(self, buySell, quantity):
+        data = ET.fromstring(
+            ('<TradeConfirm accountId="U123456" acctAlias="ibflex test" '
+             'currency="USD" assetCategory="FUND" symbol="QSPIX" conid="" '
+             'transactionType="ExchTrade" exchange="FUNDSERV" '
+             f'buySell="{buySell}" quantity="{quantity}" price="11.08" '
+             'orderType="MKT" levelOfDetail="EXECUTION" notes="XCH" />')
+        )
+        return parser.parse_data_element(data)
+
+    def testExchangeBuy(self):
+        instance = self.parse("EXCHANGE BUY", "518.782")
+        self.assertIsInstance(instance, Types.TradeConfirm)
+        self.assertEqual(instance.buySell, enums.BuySell.EXCHANGEBUY)
+        self.assertEqual(instance.quantity, decimal.Decimal("518.782"))
+        self.assertEqual(instance.notes, (enums.Code.MUTUALFUNDEXCHANGE,))
+
+    def testExchangeSell(self):
+        instance = self.parse("EXCHANGE SELL", "-470")
+        self.assertEqual(instance.buySell, enums.BuySell.EXCHANGESELL)
+        self.assertEqual(instance.quantity, decimal.Decimal("-470"))
+
+
 class MutualFundDividendDetailTestCase(unittest.TestCase):
     data = ET.fromstring(
         ('<MutualFundDividendDetail accountId="U123456" acctAlias="ibflex test" '
