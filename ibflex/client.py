@@ -127,6 +127,7 @@ def download(
     stmt_access = request_statement(
         token, query_id, period=period, fd=fd, td=td, timeout=timeout
     )
+    started = time.monotonic()
     status = 0
     tries = 0
     while status is not True:
@@ -140,8 +141,16 @@ def download(
         )
         status = check_statement_response(response)
         if max_tries and tries > max_tries:
+            # status is a retry delay here, so the response is a StatementError
+            # that check_statement_response has already parsed once; parsing it
+            # again puts IB's last answer in the message.
+            last_error = parse_stmt_response(response)
             raise StatementGenerationTimeout(
-                "Exceeded max number of tries while attempting download"
+                f"Statement {stmt_access.ReferenceCode} for query {query_id} "
+                f"was not ready after {tries} polls over "
+                f"{time.monotonic() - started:.0f} s. IB's last answer, "
+                f"stamped {last_error.timestamp:%Y-%m-%d %H:%M %Z}, was "
+                f"code {last_error.ErrorCode}: {last_error.ErrorMessage}"
             )
     return response.content
 

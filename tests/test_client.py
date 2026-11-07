@@ -28,6 +28,15 @@ RESPONSE_FAIL = (
 )
 
 
+RESPONSE_IN_PROGRESS = (
+    '<FlexStatementResponse timestamp="28 August, 2012 10:37 AM EDT">'
+    '<Status>Warn</Status>'
+    '<ErrorCode>1019</ErrorCode>'
+    '<ErrorMessage>Statement generation in progress. Please try again shortly.</ErrorMessage>'
+    '</FlexStatementResponse>'
+)
+
+
 FLEX_QUERY_RESPONSE = (
     '<FlexQueryResponse queryName="Test" type="AZ">'
     '<FlexStatements count="1">'
@@ -54,6 +63,8 @@ def mock_response(*args, **kwargs) -> object:
         return MockResponse(RESPONSE_SUCCESS)
     elif token == "DEADBEEF" and query == "1234567890":
         return MockResponse(FLEX_QUERY_RESPONSE)
+    elif token == "DEADBEEF" and query == "in-progress":
+        return MockResponse(RESPONSE_IN_PROGRESS)
 
     return MockResponse(RESPONSE_FAIL)
 
@@ -148,6 +159,29 @@ class DownloadTestCase(unittest.TestCase):
 
         response = parser.parse(BytesIO(output))
         self.assertIsInstance(response, Types.FlexQueryResponse)
+
+
+def mock_response_in_progress(*args, **kwargs) -> object:
+    """SendRequest succeeds; every GetStatement poll says generation is in progress."""
+    if kwargs["params"]["q"] == "0987654321":
+        return mock_response(*args, **kwargs)
+    return mock_response(*args, params={"t": "DEADBEEF", "q": "in-progress"})
+
+
+@patch("time.sleep")
+@patch("requests.get", side_effect=mock_response_in_progress)
+class StatementGenerationTimeoutTestCase(unittest.TestCase):
+    def test_message_names_the_statement_polls_and_last_ib_answer(
+        self, mock_requests_get: Mock, mock_sleep: Mock
+    ):
+        with self.assertRaises(client.StatementGenerationTimeout) as raised:
+            client.download(token="DEADBEEF", query_id="0987654321", max_tries=3)
+
+        message = str(raised.exception)
+        self.assertIn("Statement 1234567890 for query 0987654321", message)
+        self.assertIn("after 4 polls", message)
+        self.assertIn("stamped 2012-08-28 10:37 UTC-04:00", message)
+        self.assertIn("code 1019: Statement generation in progress", message)
 
 
 @patch("requests.get", side_effect=mock_response)
